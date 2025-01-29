@@ -26,6 +26,8 @@ dependencies:
     sdk: flutter
   intl: any
   sqflite: ^2.0.3+1
+  path: ^1.8.3
+  timezone: ^0.9.1
 
 dev_dependencies:
   test: ^1.15.0
