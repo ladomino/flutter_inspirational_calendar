@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 void main() {
+  //Initialize the timezone
+  tz.initializeTimeZones();
+
   runApp(const MyApp());
 }
 
@@ -40,7 +45,7 @@ class DailyCalendarPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.calendar_today),
             onPressed: () {
-              // TODO: Implement date picker functionality
+              // Navigate to a screen showing the current date and the daily phrase
             },
           ),
         ],
@@ -60,7 +65,7 @@ class DailyCalendar extends StatefulWidget {
 class _DailyCalendarState extends State<DailyCalendar> {
   String _phrase =
       "This is a placeholder for your daily phrase"; // Example phrase
-  DateTime _currentDate = DateTime.now(); // Current date
+  final DateTime _currentDate = tz.TZDateTime.now(tz.local); // Current date
 
   @override
   void initState() {
@@ -69,19 +74,20 @@ class _DailyCalendarState extends State<DailyCalendar> {
   }
 
   Future<void> _loadPhrase() async {
-    // TODO: Implement loading phrase from a database or API
     // For now, we'll just use a placeholder
     setState(() {
       _phrase = "Your daily inspirational phrase goes here!";
     });
   }
 
-  void _changeDate(DateTime newDate) {
-    setState(() {
-      _currentDate = newDate;
-    });
-    _loadPhrase(); // Reload phrase for the new date
-  }
+  // void _changeDate(DateTime newDate) {
+
+  //   setState(() {
+  //     _currentDate = newDate;
+  //   });
+
+  //   _loadPhrase(); // Reload phrase for the new date
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -145,4 +151,3 @@ class _DailyCalendarState extends State<DailyCalendar> {
     );
   }
 }
-
