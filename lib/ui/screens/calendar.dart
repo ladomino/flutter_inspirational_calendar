@@ -12,10 +12,18 @@ class DailyCalendarPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Daily Inspirational Calendar"),
+        title: const Text("Daily Inspirational Calendar",
+            style: TextStyle(
+              color: Colors.white,
+            )),
+        backgroundColor: Colors.purple[700],
+        elevation: 0, // no shadow
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_today),
+            icon: const Icon(
+              Icons.refresh,
+              color: Colors.white,
+            ),
             onPressed: () {
               // Navigate to a screen showing the current date and the daily phrase
             },
