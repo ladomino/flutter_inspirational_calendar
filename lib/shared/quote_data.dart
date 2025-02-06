@@ -1,0 +1,26 @@
+ final initialQuotes = [
+      "The best way to predict the future is to create it.",
+      "Believe you can and you're halfway there.",
+      "The only way to do great work is to love what you do.",
+      "You can't teach an old dog new tricks.",
+      "Do what you can, with what you have, where you are.",
+      "You only live once, so don't waste your last moments wasting time.",
+      "You have infinite greatness inside of you. Let it win over the BS."
+      "You have infinite potential, but it's up to you to use it wisely.",
+      "Your faith must be stronger than your fears.",
+      "The most dangerous thing in life is not to trust your instincts.",
+      "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+      "Believe in yourself, you're stronger than you think.",
+      "Believe in yourself, believe in yourself, believe in yourself.",
+      "The greatest wealth you can ever have is within yourself.",
+      "You are never too old to set another goal or dream a new dream.",
+      "The key to success is to focus on what you can control.",
+      "The only way to do great work is to love what you do.",
+      "The greatest wealth you can ever have is within yourself.",
+      "Success is not final, failure is not fatal: It is the courage to continue that counts.",
+      "You must believe that everything you desire really is available to you and that you possess all the tools, power and permission to achieve it.",
+      "Take big, audacious action in the direction of your dreams, and do not let the fact that you're wetting your pants stop you.",
+      "Be grateful for all you are and all that you are becoming.",
+      "One of the best things you can do to improve the world is to improve yourself.",
+      // Add more quotes as needed
+    ];
