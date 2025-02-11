@@ -1,23 +1,27 @@
 import 'package:timezone/timezone.dart' as tz;
 
 class Quote {
-  final int id;
-  final String text;
+  final String id;
+  final String quote;
   final tz.TZDateTime date;
 
-  Quote({required this.id, required this.text, required this.date});
+  Quote({
+    required this.id,
+    required this.quote,
+    required this.date,
+  });
 
-  factory Quote.fromMap(Map<String, dynamic> map) {
+  factory Quote.fromMap(Map<dynamic, dynamic> map) {
     return Quote(
-      id: map['id'] as int,
-      text: map['quote'] as String,
+      id: map['id'],
+      quote: map['quote'],
       date: tz.TZDateTime.from(DateTime.parse(map['date'] as String), tz.local),
     );
   }
 
   @override
   String toString() {
-    return 'Quote(id: $id, text: $text, date: ${date.toString()})';
+    return 'Quote(id: $id, quote: $quote, date: ${date.toString()})';
   }
 }
 
@@ -26,19 +30,20 @@ class QuoteRepository {
 
   QuoteRepository();
 
-  factory QuoteRepository.fromDB(List<Map<String, dynamic>> dbData) {
+  factory QuoteRepository.fromDB(List<Map> input) {
     final quoteStore = QuoteRepository();
 
-    for (var item in dbData) {
+    for (final item in input) {
       final quote = Quote.fromMap(item);
-      quoteStore._quotes[quote.id.toString()] = quote;
+
+      quoteStore.addQuote(quote);
     }
 
     return quoteStore;
   }
 
   void addQuote(Quote quote) {
-    _quotes[quote.id.toString()] = quote;
+    _quotes[quote.id] = quote;
   }
 
   Quote? getQuote(String id) {

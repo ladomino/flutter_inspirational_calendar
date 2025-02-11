@@ -98,10 +98,9 @@ class DailyCalendar extends ConsumerStatefulWidget {
 }
 
 class DailyCalendarState extends ConsumerState<DailyCalendar> {
-  String _phrase =
-      "This is a placeholder for your daily phrase"; // Example phrase
   final DateTime _currentDate = tz.TZDateTime.now(tz.local); // Current date
   Color? _cardColor;
+  late Future<String> _phraseFuture;
 
   @override
   void initState() {
@@ -109,44 +108,28 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
 
     _generateRandomColor();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadPhrases();
-    });
+    _phraseFuture = _loadPhrases();
   }
 
-  Future<void> _loadPhrases() async {
+  Future<String> _loadPhrases() async {
     try {
       final quotesModel = ref.read(quotesModelProvider);
 
       final repository = await quotesModel.getAllQuotes();
 
-      print('QUOTES: ${repository.toString()}');
-
       if (repository != null) {
-
         final today = DateTime.now();
         final todaysQuote = repository.getQuoteForDate(today);
 
         if (todaysQuote != null) {
-          if (mounted) {
-            setState(() {
-              _phrase = '$todaysQuote';
-            });
-          }
+          return todaysQuote.quote;
         } else {
-          if (mounted) {
-            setState(() {
-              _phrase = "No quotes found in the database.";
-            });
-          }
+          return "No quotes found in the database.";
         }
       }
+      return "No quotes repository available.";
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _phrase = "Error loading today's quote.";
-        });
-      }
+      return "Error loading today's quote.";
     }
   }
 
@@ -211,27 +194,40 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
                     SizedBox(
                         height: 20,
                         child: CustomPaint(
-                            size: Size(MediaQuery.of(context).size.width * 0.9, 1),
+                            size: Size(
+                                MediaQuery.of(context).size.width * 0.9, 1),
                             painter: LinePainter(
                               textWidth: 0,
                               hasGap: false,
                             ))),
-        
+
                     // Body - Phrase
                     Expanded(
                       child: Center(
-                        child: Text(
-                          _phrase,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontStyle: FontStyle.italic,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
+                        child: FutureBuilder<String>(
+                          future: _phraseFuture,
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            } else if (snapshot.hasError) {
+                              return Text('Error: ${snapshot.error}');
+                            } else {
+                              return Text(
+                                snapshot.data ?? 'No quote available',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontStyle: FontStyle.italic,
+                                  color: Colors.white,
+                                ),
+                                textAlign: TextAlign.center,
+                              );
+                            }
+                          },
                         ),
                       ),
                     ),
-        
+
                     // Footer - Year
                     SizedBox(
                       height: 30,
@@ -239,7 +235,8 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
                         alignment: Alignment.center,
                         children: [
                           CustomPaint(
-                            size: Size(MediaQuery.of(context).size.width * 0.9, 1),
+                            size: Size(
+                                MediaQuery.of(context).size.width * 0.9, 1),
                             painter: LinePainter(
                               textWidth: 60,
                               hasGap: true,

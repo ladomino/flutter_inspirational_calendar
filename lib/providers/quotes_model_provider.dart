@@ -6,7 +6,3 @@ final quotesModelProvider = ChangeNotifierProvider<QuotesModel>((ref) {
   return QuotesModel();
 });
 
-final quotesInitializationProvider = FutureProvider<void>((ref) async {
-  final quotesModel = ref.watch(quotesModelProvider);
-  await quotesModel.init();
-});

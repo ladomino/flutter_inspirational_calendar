@@ -4,6 +4,8 @@ import 'package:flutter_inspirational_calendar/db_models/quotes_db.dart';
 
 class QuotesModel extends ChangeNotifier {
   QuotesDatabase? _quotesDatabase;
+  QuoteRepository? _quoteRepository;
+
   bool _isInitialized = false;
 
   QuotesModel();
@@ -13,6 +15,7 @@ class QuotesModel extends ChangeNotifier {
 
     _quotesDatabase = QuotesDatabase();
     await _quotesDatabase!.initializeDB();
+
     _isInitialized = true;
     notifyListeners();
   }
@@ -28,13 +31,20 @@ class QuotesModel extends ChangeNotifier {
 
   Future<QuoteRepository?> getAllQuotes() async {
     if (!_isInitialized) await init();
-    final quoteRepository = await _quotesDatabase?.getAllQuotes();
-    return quoteRepository;
+
+    _quoteRepository = await _quotesDatabase?.getAllQuotes();
+
+    notifyListeners();
+
+    return _quoteRepository;
   }
 
   Future<void> refreshAllQuotes() async {
+
     if (!_isInitialized) await init();
+
     await _quotesDatabase?.refreshQuotesDb();
+    
     notifyListeners();
   }
 }

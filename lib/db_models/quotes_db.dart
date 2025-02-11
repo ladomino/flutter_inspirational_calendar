@@ -5,10 +5,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_inspirational_calendar/data/quote.dart';
 import 'package:flutter_inspirational_calendar/shared/quote_data.dart';
+import 'package:uuid/uuid.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
-typedef DbFunctions = Future<Database> Function(
+typedef OpenDbFunctions = Future<Database> Function(
   String path, {
   FutureOr<void> Function(Database, int)? onCreate,
   FutureOr<void> Function(Database)? onOpen,
@@ -39,7 +40,7 @@ abstract class BaseDatabase {
   BaseDatabase({Database? db, required this.filename}) : _db = db;
 
   Future<void> initializeDB({
-    DbFunctions? dbFunctions,
+    OpenDbFunctions? openDbFunctions,
     String? path,
   });
 
@@ -67,17 +68,15 @@ class QuotesDatabase extends BaseDatabase {
 
   @override
   Future<void> initializeDB({
-    DbFunctions? dbFunctions,
+    OpenDbFunctions? openDbFunctions,
     String? path,
   }) async {
-    final openDataFunction = dbFunctions ?? openDatabase;
+    final openDataFunction = openDbFunctions ?? openDatabase;
 
     final fullPath = path ?? await getDatabasesPath();
 
-    print('Database path: $fullPath');
-
     final Database db = await openDataFunction(
-      join(fullPath, filename),
+      join(fullPath, 'quotes.db'),
       onCreate: (Database db, int version) async {
         await createDbTable(db);
       },
@@ -86,14 +85,15 @@ class QuotesDatabase extends BaseDatabase {
       },
       version: 1,
     );
+    _db = db;
     _quoteDB = db;
   }
 
   @override
   Future<void> createDbTable(Database db) async {
     await db.execute('''
-      CREATE TABLE quotes(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+      CREATE TABLE IF NOT EXISTS quotes (
+        id TEXT PRIMARY KEY,
         quote TEXT NOT NULL,
         date TEXT NOT NULL
       )
@@ -131,6 +131,7 @@ class QuotesDatabase extends BaseDatabase {
       }
 
       batch.insert('quotes', {
+        'id': const Uuid().v4(),
         'quote': quote,
         'date': date.toIso8601String(),
       });
@@ -140,7 +141,7 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> insertQuote(String quote, DateTime date) async {
-    await database?.insert(
+    await _quoteDB?.insert(
       'quotes',
       {
         'quote': quote,
@@ -166,7 +167,7 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<QuoteRepository> getAllQuotes() async {
-    final list = await _db?.rawQuery(
+    final list = await database?.rawQuery(
       '''
       SELECT
         id,
@@ -227,7 +228,7 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> deleteQuote(int id) async {
-    await _quoteDB?.delete(
+    await database?.delete(
       'quotes',
       where: 'id = ?',
       whereArgs: [id],
@@ -235,22 +236,22 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> close() async {
-    _quoteDB?.close();
+    database?.close();
   }
 
   @override
   Future<void> rmTable() async {
-    return _quoteDB?.execute('DROP TABLE IF EXISTS quotes');
+    return database?.execute('DROP TABLE IF EXISTS quotes');
   }
 
   Future<void> clearQuotesDb() async {
-    return _quoteDB?.execute('DELETE FROM quotes');
+    return database?.execute('DELETE FROM quotes');
   }
 
   Future<void> refreshQuotesDb() async {
     await clearQuotesDb();
 
-    final db = _quoteDB;
+    final db = database;
     if (db != null) {
       await _loadInitialData(db);
     }
@@ -273,7 +274,7 @@ class QuotesDatabase extends BaseDatabase {
 
   @override
   Future<void> deInit() async {
-    _quoteDB?.close();
-    _quoteDB = null;
+    database?.close();
+    _quoteDB = _db = null;
   }
 }
