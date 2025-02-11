@@ -29,6 +29,11 @@ dependencies:
   path: ^1.8.3
   timezone: ^0.9.1
 
+  flutter_hooks:
+  riverpod: ^2.0.0
+  hooks_riverpod: ^2.0.0
+  uuid: ^3.0.4
+
 dev_dependencies:
   test: ^1.15.0
   flutter_test:

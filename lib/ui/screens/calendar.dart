@@ -1,48 +1,103 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_inspirational_calendar/providers/quotes_model_provider.dart';
+import 'package:flutter_inspirational_calendar/providers/todo_model_provider.dart';
 import 'package:flutter_inspirational_calendar/ui/components/linepainter.dart';
+import 'package:flutter_inspirational_calendar/ui/components/todo_item.dart';
+import 'package:flutter_inspirational_calendar/ui/components/todos_title.dart';
+import 'package:flutter_inspirational_calendar/ui/components/todos_toolbar.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:timezone/timezone.dart' as tz;
 
-class DailyCalendarPage extends StatelessWidget {
-  const DailyCalendarPage({Key? key}) : super(key: key);
+/// Some keys used for testing
+final addTodoKey = UniqueKey();
+final activeFilterKey = UniqueKey();
+final completedFilterKey = UniqueKey();
+final allFilterKey = UniqueKey();
+
+class Home extends HookConsumerWidget {
+  const Home({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Daily Inspirational Calendar",
-            style: TextStyle(
-              color: Colors.white,
-            )),
-        backgroundColor: Colors.purple[700],
-        elevation: 0, // no shadow
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.refresh,
-              color: Colors.white,
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(filteredTodos);
+    final newTodoController = useTextEditingController();
+
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text("Daily Inspirational Calendar",
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.purple[700],
+          elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh,
+                  color: Color.fromRGBO(255, 255, 255, 1)),
+              onPressed: () {},
             ),
-            onPressed: () {
-              // Navigate to a screen showing the current date and the daily phrase
-            },
-          ),
-        ],
+          ],
+        ),
+        body: Column(
+          children: [
+            const DailyCalendar(),
+            Expanded(
+              child: ListView(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                children: [
+                  const ToDoTitle(),
+                  TextField(
+                    key: addTodoKey,
+                    controller: newTodoController,
+                    decoration: const InputDecoration(
+                      labelText: 'What needs to be done?',
+                    ),
+                    onSubmitted: (value) {
+                      ref.read(todoListProvider.notifier).add(value);
+                      newTodoController.clear();
+                    },
+                  ),
+                  const SizedBox(height: 42),
+                  const ToDoToolbar(),
+                  if (todos.isNotEmpty) const Divider(height: 0),
+                  for (var i = 0; i < todos.length; i++) ...[
+                    if (i > 0) const Divider(height: 0),
+                    Dismissible(
+                      key: ValueKey(todos[i].id),
+                      onDismissed: (_) {
+                        ref.read(todoListProvider.notifier).remove(todos[i]);
+                      },
+                      child: ProviderScope(
+                        overrides: [
+                          currentTodo.overrideWithValue(todos[i]),
+                        ],
+                        child: const TodoItem(),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      body: const DailyCalendar(),
     );
   }
 }
 
-class DailyCalendar extends StatefulWidget {
+class DailyCalendar extends ConsumerStatefulWidget {
   const DailyCalendar({Key? key}) : super(key: key);
 
   @override
-  State<DailyCalendar> createState() => _DailyCalendarState();
+  ConsumerState<DailyCalendar> createState() => DailyCalendarState();
 }
 
-class _DailyCalendarState extends State<DailyCalendar> {
+class DailyCalendarState extends ConsumerState<DailyCalendar> {
   String _phrase =
       "This is a placeholder for your daily phrase"; // Example phrase
   final DateTime _currentDate = tz.TZDateTime.now(tz.local); // Current date
@@ -51,25 +106,58 @@ class _DailyCalendarState extends State<DailyCalendar> {
   @override
   void initState() {
     super.initState();
-    _loadPhrase();
-    _generateRandomColor();
-  }
 
-  Future<void> _loadPhrase() async {
-    // For now, we'll just use a placeholder
-    setState(() {
-      _phrase = "Your daily inspirational phrase goes here!";
+    _generateRandomColor();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadPhrases();
     });
   }
 
-  // void _changeDate(DateTime newDate) {
+  Future<void> _loadPhrases() async {
+    try {
+      final quotesModel = ref.read(quotesModelProvider);
 
-  //   setState(() {
-  //     _currentDate = newDate;
-  //   });
+      final repository = await quotesModel.getAllQuotes();
 
-  //   _loadPhrase(); // Reload phrase for the new date
-  // }
+      print('QUOTES: ${repository.toString()}');
+
+      if (repository != null) {
+
+        final today = DateTime.now();
+        final todaysQuote = repository.getQuoteForDate(today);
+
+        if (todaysQuote != null) {
+          if (mounted) {
+            setState(() {
+              _phrase = '$todaysQuote';
+            });
+          }
+        } else {
+          if (mounted) {
+            setState(() {
+              _phrase = "No quotes found in the database.";
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _phrase = "Error loading today's quote.";
+        });
+      }
+    }
+  }
+
+  void refresh() {
+    final quotesModel = ref.read(quotesModelProvider);
+
+    quotesModel.refreshAllQuotes();
+
+    _generateRandomColor();
+    _loadPhrases();
+  }
 
   void _generateRandomColor() {
     final random = Random();
@@ -91,85 +179,90 @@ class _DailyCalendarState extends State<DailyCalendar> {
     String date = DateFormat('d').format(_currentDate);
     String year = DateFormat('y').format(_currentDate);
 
-    return Center(
-      child: Card(
-        color: _cardColor,
-        elevation: 5,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          height: MediaQuery.of(context).size.height * 0.5,
-          padding: const EdgeInsets.all(20.0),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Text(
-                  '$dayOfWeek $month $date',
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                SizedBox(
-                    height: 20,
-                    child: CustomPaint(
-                        size: Size(MediaQuery.of(context).size.width * 0.9, 1),
-                        painter: LinePainter(
-                          textWidth: 0,
-                          hasGap: false,
-                        ))),
-
-                // Body - Phrase
-                Expanded(
-                  child: Center(
-                    child: Text(
-                      _phrase,
+    return Column(
+      children: [
+        const SizedBox(height: 20),
+        Center(
+          child: Card(
+            color: _cardColor,
+            elevation: 5,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.3,
+              padding: const EdgeInsets.all(20.0),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Text(
+                      '$dayOfWeek $month $date',
                       style: const TextStyle(
-                        fontSize: 18,
-                        fontStyle: FontStyle.italic,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ),
-                ),
-
-                // Footer - Year
-                SizedBox(
-                  height: 30,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CustomPaint(
-                        size: Size(MediaQuery.of(context).size.width * 0.9, 1),
-                        painter: LinePainter(
-                          textWidth: 60,
-                          hasGap: true,
+                    SizedBox(
+                        height: 20,
+                        child: CustomPaint(
+                            size: Size(MediaQuery.of(context).size.width * 0.9, 1),
+                            painter: LinePainter(
+                              textWidth: 0,
+                              hasGap: false,
+                            ))),
+        
+                    // Body - Phrase
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          _phrase,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                      Text(
-                        year,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
+                    ),
+        
+                    // Footer - Year
+                    SizedBox(
+                      height: 30,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: Size(MediaQuery.of(context).size.width * 0.9, 1),
+                            painter: LinePainter(
+                              textWidth: 60,
+                              hasGap: true,
+                            ),
+                          ),
+                          Text(
+                            year,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

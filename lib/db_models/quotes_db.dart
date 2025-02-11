@@ -52,7 +52,7 @@ abstract class BaseDatabase {
 }
 
 class QuotesDatabase extends BaseDatabase {
-  Database? quoteDB;
+  Database? _quoteDB;
 
   QuotesDatabase({Database? db})
       : super(
@@ -62,7 +62,7 @@ class QuotesDatabase extends BaseDatabase {
 
   @visibleForTesting
   set quoteDb(Database? val) {
-    quoteDB = val;
+    _quoteDB = val;
   }
 
   @override
@@ -74,6 +74,8 @@ class QuotesDatabase extends BaseDatabase {
 
     final fullPath = path ?? await getDatabasesPath();
 
+    print('Database path: $fullPath');
+
     final Database db = await openDataFunction(
       join(fullPath, filename),
       onCreate: (Database db, int version) async {
@@ -84,7 +86,7 @@ class QuotesDatabase extends BaseDatabase {
       },
       version: 1,
     );
-    quoteDB = db;
+    _quoteDB = db;
   }
 
   @override
@@ -101,7 +103,6 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> _loadInitialData(Database db) async {
-
     final random = Random();
 
     final batch = db.batch();
@@ -114,24 +115,19 @@ class QuotesDatabase extends BaseDatabase {
     final availableQuotes = List<String>.from(initialQuotes);
 
     for (int i = 0; i < 365; i++) {
-
       final date = startDate.add(Duration(days: i));
 
       String quote;
 
       if (availableQuotes.isNotEmpty) {
-
         // Randomly select a quote from the available quotes
         final randomIndex = random.nextInt(availableQuotes.length);
         quote = availableQuotes.removeAt(randomIndex);
-
       } else {
-
         // If we've used all quotes, start over with a shuffled list
         availableQuotes.addAll(initialQuotes);
         availableQuotes.shuffle(random);
         quote = availableQuotes.removeAt(0);
-
       }
 
       batch.insert('quotes', {
@@ -170,32 +166,48 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<QuoteRepository> getAllQuotes() async {
-    final list = await database?.query(
-          'quotes',
-          columns: ['id', 'quote', 'date'],
-          orderBy: 'date ASC',
-        ) ??
-        [];
+    final list = await _db?.rawQuery(
+      '''
+      SELECT
+        id,
+        quote,
+        date
+      FROM quotes''',
+    );
 
     try {
-      return QuoteRepository.fromDB(list);
+      return QuoteRepository.fromDB(list ?? []);
     } catch (e) {
       return QuoteRepository();
     }
   }
 
   Future<Map<String, dynamic>?> getTodayQuote() async {
-    
     final today = DateTime.now();
     final todayString =
         today.toIso8601String().split('T')[0]; // Get just the date part
 
+    print('Searching for quote on date: $todayString');
+
+    // First, let's check if we have any quotes in the database
+    final countResult = await database?.rawQuery('SELECT COUNT(*) FROM quotes');
+    final count = countResult != null ? Sqflite.firstIntValue(countResult) : 0;
+    print('Total quotes in database: $count');
+
+    // Now, let's get all quotes and print their dates
+    final allQuotes =
+        await database?.query('quotes', columns: ['id', 'date', 'quote']);
+    print(
+        'All quotes: ${allQuotes?.map((q) => '${q['date']}: ${q['quote']}')}');
+
+    // Try to get today's quote
     final result = await database?.query(
       'quotes',
       where: 'date LIKE ?',
       whereArgs: ['$todayString%'],
-      limit: 1,
     );
+
+    print('Query result for today\'s quote: $result');
 
     return result?.isNotEmpty == true ? result!.first : null;
   }
@@ -206,7 +218,7 @@ class QuotesDatabase extends BaseDatabase {
       'date': date.toIso8601String(),
     };
 
-    await quoteDB?.update(
+    await _quoteDB?.update(
       'quotes',
       data,
       where: 'id = ?',
@@ -215,7 +227,7 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> deleteQuote(int id) async {
-    await quoteDB?.delete(
+    await _quoteDB?.delete(
       'quotes',
       where: 'id = ?',
       whereArgs: [id],
@@ -223,16 +235,25 @@ class QuotesDatabase extends BaseDatabase {
   }
 
   Future<void> close() async {
-    quoteDB?.close();
+    _quoteDB?.close();
   }
 
   @override
   Future<void> rmTable() async {
-    return quoteDB?.execute('DROP TABLE IF EXISTS quotes');
+    return _quoteDB?.execute('DROP TABLE IF EXISTS quotes');
   }
 
   Future<void> clearQuotesDb() async {
-    return quoteDB?.execute('DELETE FROM quotes');
+    return _quoteDB?.execute('DELETE FROM quotes');
+  }
+
+  Future<void> refreshQuotesDb() async {
+    await clearQuotesDb();
+
+    final db = _quoteDB;
+    if (db != null) {
+      await _loadInitialData(db);
+    }
   }
 
   @override
@@ -252,7 +273,7 @@ class QuotesDatabase extends BaseDatabase {
 
   @override
   Future<void> deInit() async {
-    quoteDB?.close();
-    quoteDB = null;
+    _quoteDB?.close();
+    _quoteDB = null;
   }
 }
