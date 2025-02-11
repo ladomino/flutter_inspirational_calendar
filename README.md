@@ -2,7 +2,7 @@
 
 A Flutter-based inspirational calendar application for Android, iOS, and macOS.
 
-![Flutter Inspirational Calendar Screenshot](assets/app_screenshot.png)
+<img src="assets/app_screenshot.png" alt="Flutter Inspirational Calendar Screenshot" width="300"/>
 
 ## About the Project
 
