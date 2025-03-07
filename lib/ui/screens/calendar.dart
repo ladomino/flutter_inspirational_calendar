@@ -145,6 +145,8 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
   }
 
   Future<void> refresh() async {
+    _generateRandomColor();
+    
     setState(() {
       _phraseFuture = _loadPhrases(isRefresh: true);
     });
