@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_inspirational_calendar/data/quote.dart';
 import 'package:flutter_inspirational_calendar/providers/quotes_model_provider.dart';
 import 'package:flutter_inspirational_calendar/providers/todo_model_provider.dart';
 import 'package:flutter_inspirational_calendar/ui/components/linepainter.dart';
@@ -17,6 +18,8 @@ final addTodoKey = UniqueKey();
 final activeFilterKey = UniqueKey();
 final completedFilterKey = UniqueKey();
 final allFilterKey = UniqueKey();
+
+final refreshProvider = StateProvider<int>((ref) => 0);
 
 class Home extends HookConsumerWidget {
   const Home({Key? key}) : super(key: key);
@@ -38,7 +41,10 @@ class Home extends HookConsumerWidget {
             IconButton(
               icon: const Icon(Icons.refresh,
                   color: Color.fromRGBO(255, 255, 255, 1)),
-              onPressed: () {},
+              onPressed: () {
+                // Increment the refresh state to trigger a refresh
+                ref.read(refreshProvider.notifier).state++;
+              },
             ),
           ],
         ),
@@ -108,14 +114,19 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
 
     _generateRandomColor();
 
-    _phraseFuture = _loadPhrases();
+    _phraseFuture = _loadPhrases(isRefresh: false);
   }
 
-  Future<String> _loadPhrases() async {
+  Future<String> _loadPhrases({required bool isRefresh}) async {
     try {
       final quotesModel = ref.read(quotesModelProvider);
 
-      final repository = await quotesModel.getAllQuotes();
+      QuoteRepository? repository;
+      if (isRefresh) {
+        repository = await quotesModel.refreshAllQuotes();
+      } else {
+        repository = await quotesModel.getAllQuotes();
+      }
 
       if (repository != null) {
         final today = DateTime.now();
@@ -133,13 +144,10 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
     }
   }
 
-  void refresh() {
-    final quotesModel = ref.read(quotesModelProvider);
-
-    quotesModel.refreshAllQuotes();
-
-    _generateRandomColor();
-    _loadPhrases();
+  Future<void> refresh() async {
+    setState(() {
+      _phraseFuture = _loadPhrases(isRefresh: true);
+    });
   }
 
   void _generateRandomColor() {
@@ -161,6 +169,13 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
     String month = DateFormat('MMMM').format(_currentDate);
     String date = DateFormat('d').format(_currentDate);
     String year = DateFormat('y').format(_currentDate);
+
+    // Listen to the refresh provider here
+    ref.listen(refreshProvider, (previous, next) {
+      if (previous != next) {
+        refresh();
+      }
+    });
 
     return Column(
       children: [
