@@ -183,7 +183,6 @@ class QuotesDatabase extends BaseDatabase {
     }
   }
 
-  // TODO: FIX this up
   Future<Map<String, dynamic>?> getTodayQuote() async {
     final today = DateTime.now();
     final todayString =
@@ -194,11 +193,11 @@ class QuotesDatabase extends BaseDatabase {
 
     // If there are no quotes, return null
     final count = countResult != null ? Sqflite.firstIntValue(countResult) : 0;
-   
-    // Now, let's get all quotes and print their dates
-    final allQuotes =
-        await database?.query('quotes', columns: ['id', 'date', 'quote']);
-   
+
+    if (count == 0) {
+      return null;
+    }
+
     // Try to get today's quote
     final result = await database?.query(
       'quotes',
@@ -206,7 +205,19 @@ class QuotesDatabase extends BaseDatabase {
       whereArgs: ['$todayString%'],
     );
 
-    return result?.isNotEmpty == true ? result!.first : null;
+    // If we found a quote for today, return it
+    if (result != null && result.isNotEmpty) {
+      return result.first;
+    }
+
+    // If we didn't find a quote for today, get a random quote
+    final randomQuote = await database?.rawQuery('''
+    SELECT * FROM quotes
+    ORDER BY RANDOM()
+    LIMIT 1
+  ''');
+
+    return randomQuote?.isNotEmpty == true ? randomQuote!.first : null;
   }
 
   Future<void> updateQuote(int id, String quote, DateTime date) async {
