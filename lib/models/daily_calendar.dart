@@ -39,12 +39,14 @@ class QuotesModel extends ChangeNotifier {
     return _quoteRepository;
   }
 
-  Future<void> refreshAllQuotes() async {
+  Future<QuoteRepository?> refreshAllQuotes() async {
 
     if (!_isInitialized) await init();
 
     await _quotesDatabase?.refreshQuotesDb();
+
+    _quoteRepository = await _quotesDatabase?.getAllQuotes();
     
-    notifyListeners();
+    return _quoteRepository;
   }
 }

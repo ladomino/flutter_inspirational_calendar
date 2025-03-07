@@ -183,32 +183,28 @@ class QuotesDatabase extends BaseDatabase {
     }
   }
 
+  // TODO: FIX this up
   Future<Map<String, dynamic>?> getTodayQuote() async {
     final today = DateTime.now();
     final todayString =
         today.toIso8601String().split('T')[0]; // Get just the date part
 
-    print('Searching for quote on date: $todayString');
-
     // First, let's check if we have any quotes in the database
     final countResult = await database?.rawQuery('SELECT COUNT(*) FROM quotes');
-    final count = countResult != null ? Sqflite.firstIntValue(countResult) : 0;
-    print('Total quotes in database: $count');
 
+    // If there are no quotes, return null
+    final count = countResult != null ? Sqflite.firstIntValue(countResult) : 0;
+   
     // Now, let's get all quotes and print their dates
     final allQuotes =
         await database?.query('quotes', columns: ['id', 'date', 'quote']);
-    print(
-        'All quotes: ${allQuotes?.map((q) => '${q['date']}: ${q['quote']}')}');
-
+   
     // Try to get today's quote
     final result = await database?.query(
       'quotes',
       where: 'date LIKE ?',
       whereArgs: ['$todayString%'],
     );
-
-    print('Query result for today\'s quote: $result');
 
     return result?.isNotEmpty == true ? result!.first : null;
   }
