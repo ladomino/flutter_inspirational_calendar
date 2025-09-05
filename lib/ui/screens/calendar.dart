@@ -104,7 +104,7 @@ class DailyCalendar extends ConsumerStatefulWidget {
 }
 
 class DailyCalendarState extends ConsumerState<DailyCalendar> {
-  final DateTime _currentDate = tz.TZDateTime.now(tz.local); // Current date
+  DateTime _currentDate = tz.TZDateTime.now(tz.local); // Current date
   Color? _cardColor;
   late Future<String> _phraseFuture;
 
@@ -148,6 +148,7 @@ class DailyCalendarState extends ConsumerState<DailyCalendar> {
     _generateRandomColor();
     
     setState(() {
+      _currentDate = tz.TZDateTime.now(tz.local); // Update the current date
       _phraseFuture = _loadPhrases(isRefresh: true);
     });
   }
